@@ -8,30 +8,48 @@ import streamlit as st
 from evidence import verify
 from verify_onchain import fetch_records
 
+
+# --------------------------------------------------
+# CONFIGURATION
+# --------------------------------------------------
+
 st.set_page_config(
     page_title="GameGuard AI",
     page_icon="🛡️",
     layout="wide",
 )
 
-st.title("🛡️ GameGuard AI")
-st.caption("Anti-cheat monitoring and Hedera evidence verification")
-
 BASE = Path(__file__).resolve().parent
 THRESHOLD = 70
+
+# Translate indicators stored in French in players.json
+INDICATOR_TRANSLATIONS = {
+    "précision anormalement élevée": "Abnormally high shooting accuracy",
+    "temps de réaction quasi impossible": "Extremely fast reaction time",
+    "taux de tirs à la tête anormal": "Abnormally high headshot ratio",
+}
+
+
+def translate_indicator(indicator):
+    return INDICATOR_TRANSLATIONS.get(indicator, indicator)
 
 
 def load_players():
     path = BASE / "players.json"
+
     if not path.exists():
         return []
-    return json.loads(path.read_text(encoding="utf-8"))
+
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
 
 
 def get_topic():
     path = BASE / "topic_id.txt"
+
     if not path.exists():
         return None
+
     return path.read_text(encoding="utf-8").strip()
 
 
@@ -46,88 +64,192 @@ def latest_record(player_id, records):
         for record, timestamp, sequence in records
         if record.get("player_id") == player_id
     ]
+
     if not matches:
         return None
+
     return max(matches, key=lambda item: item[2])
 
+
+# --------------------------------------------------
+# LOAD DATA
+# --------------------------------------------------
 
 players = load_players()
 topic_id = get_topic()
 
+total_players = len(players)
+
+suspicious_players = sum(
+    p.get("suspicion_score", 0) >= THRESHOLD
+    for p in players
+)
+
+normal_players = total_players - suspicious_players
+
+
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
+
 with st.sidebar:
-    st.header("Navigation")
+
+    st.title("🛡️ GameGuard AI")
+
+    st.caption("Intelligent Anti-Cheat Monitoring")
+
+    st.divider()
+
     page = st.radio(
-        "Choose a page",
-        ["Dashboard", "Players", "Verify Evidence"],
+        "Navigation",
+        [
+            "Dashboard",
+            "Player Investigation",
+            "Hedera Verification",
+        ],
     )
 
     st.divider()
-    st.subheader("Hedera Network")
-    st.write("Network: Testnet")
+
+    st.subheader("Blockchain Network")
+
+    st.write("Network: Hedera Testnet")
 
     if topic_id:
+
+        st.success("Hedera Topic Connected")
+
         st.code(topic_id)
+
         st.link_button(
             "View on HashScan",
             f"https://hashscan.io/testnet/topic/{topic_id}",
         )
-    else:
-        st.warning("topic_id.txt not found")
 
+    else:
+        st.warning("Hedera topic ID not found")
+
+
+# --------------------------------------------------
+# DASHBOARD
+# --------------------------------------------------
 
 if page == "Dashboard":
-    st.header("Security Overview")
 
-    total = len(players)
-    suspicious = sum(
-        p.get("suspicion_score", 0) >= THRESHOLD
-        for p in players
+    st.title("Security Monitoring Dashboard")
+
+    st.write(
+        "Monitor simulated player behavior, identify suspicious "
+        "activity, and investigate potential cheating."
     )
+
+    st.divider()
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Players", total)
-    col2.metric("Suspicious Players", suspicious)
-    col3.metric("Normal Players", total - suspicious)
+    col1.metric(
+        "Total Players",
+        total_players,
+    )
+
+    col2.metric(
+        "Suspicious Players",
+        suspicious_players,
+    )
+
+    col3.metric(
+        "Normal Players",
+        normal_players,
+    )
+
+    st.divider()
 
     if players:
+
         df = pd.DataFrame(players)
 
-        st.subheader("Suspicion Scores")
+        st.subheader("Player Suspicion Scores")
 
-        chart = df.set_index("player_id")[
+        chart_data = df.set_index("player_id")[
             ["suspicion_score"]
         ]
-        st.bar_chart(chart)
 
-        st.subheader("Players Overview")
+        st.bar_chart(chart_data)
+
+        st.subheader("Player Monitoring Table")
+
+        display_df = df[
+            [
+                "player_id",
+                "accuracy",
+                "reaction_ms",
+                "headshot_ratio",
+                "suspicion_score",
+            ]
+        ].copy()
+
+        display_df["status"] = display_df[
+            "suspicion_score"
+        ].apply(
+            lambda score: (
+                "Suspicious"
+                if score >= THRESHOLD
+                else "Normal"
+            )
+        )
+
+        display_df.columns = [
+            "Player ID",
+            "Accuracy",
+            "Reaction Time (ms)",
+            "Headshot Ratio",
+            "Suspicion Score",
+            "Status",
+        ]
+
         st.dataframe(
-            df[
-                [
-                    "player_id",
-                    "accuracy",
-                    "reaction_ms",
-                    "headshot_ratio",
-                    "suspicion_score",
-                ]
-            ],
+            display_df,
             use_container_width=True,
             hide_index=True,
         )
+
+        st.info(
+            "Suspicion scores are generated using predefined "
+            "behavioral detection rules. They are not "
+            "probabilities of cheating."
+        )
+
     else:
+
         st.warning(
-            "players.json not found. Run your player simulation first."
+            "No player data found. "
+            "Please generate players.json first."
         )
 
 
-elif page == "Players":
-    st.header("Player Investigation")
+# --------------------------------------------------
+# PLAYER INVESTIGATION
+# --------------------------------------------------
+
+elif page == "Player Investigation":
+
+    st.title("Player Investigation Center")
+
+    st.write(
+        "Analyze individual player statistics and "
+        "review suspicious gameplay indicators."
+    )
+
+    st.divider()
 
     if not players:
-        st.warning("No players available.")
+
+        st.warning("No player data available.")
+
     else:
+
         selected_id = st.selectbox(
-            "Select a player",
+            "Select a Player",
             [p["player_id"] for p in players],
         )
 
@@ -138,89 +260,225 @@ elif page == "Players":
 
         score = player["suspicion_score"]
 
-        st.subheader(f"Player {selected_id}")
-        st.metric("Suspicion Score", f"{score}/100")
-        st.progress(min(max(score, 0), 100) / 100)
+        st.subheader(f"Player Profile: {selected_id}")
 
-        if score >= THRESHOLD:
-            st.error("Suspicious gameplay detected")
-        else:
-            st.success("No suspicious behavior detected")
+        col1, col2, col3 = st.columns(3)
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Accuracy", f"{player['accuracy']:.0%}")
-        c2.metric("Reaction Time", f"{player['reaction_ms']} ms")
-        c3.metric(
+        col1.metric(
+            "Shooting Accuracy",
+            f"{player['accuracy']:.0%}",
+        )
+
+        col2.metric(
+            "Reaction Time",
+            f"{player['reaction_ms']} ms",
+        )
+
+        col3.metric(
             "Headshot Ratio",
             f"{player['headshot_ratio']:.0%}",
         )
 
-        st.subheader("Detection Indicators")
-        if player.get("indicators"):
-            for indicator in player["indicators"]:
-                st.warning(indicator)
+        st.divider()
+
+        st.subheader("Suspicion Analysis")
+
+        st.metric(
+            "Suspicion Score",
+            f"{score}/100",
+        )
+
+        st.progress(
+            min(max(score, 0), 100) / 100
+        )
+
+        if score >= THRESHOLD:
+
+            st.error(
+                "High-risk behavior detected. "
+                "Further investigation recommended."
+            )
+
+        elif score >= 40:
+
+            st.warning(
+                "Moderate suspicion. "
+                "Additional monitoring recommended."
+            )
+
         else:
-            st.info("No indicators detected")
+
+            st.success(
+                "No significant suspicious behavior detected."
+            )
+
+        st.subheader("Detected Behavioral Indicators")
+
+        indicators = player.get("indicators", [])
+
+        if indicators:
+
+            for indicator in indicators:
+
+                st.warning(
+                    translate_indicator(indicator)
+                )
+
+        else:
+
+            st.info(
+                "No suspicious behavioral indicators detected."
+            )
+
+        st.caption(
+            "Detection is based on simulated gameplay "
+            "statistics and predefined rules."
+        )
 
 
-elif page == "Verify Evidence":
-    st.header("Hedera Evidence Verification")
+# --------------------------------------------------
+# HEDERA VERIFICATION
+# --------------------------------------------------
+
+elif page == "Hedera Verification":
+
+    st.title("Blockchain Evidence Verification")
 
     st.write(
-        "Upload an evidence JSON file to check whether "
-        "it matches a signed record published on Hedera."
+        "Verify whether gameplay evidence matches "
+        "a signed record published on Hedera Testnet."
     )
 
-    uploaded = st.file_uploader(
-        "Upload evidence JSON",
+    st.divider()
+
+    st.subheader("Upload Evidence")
+
+    uploaded_file = st.file_uploader(
+        "Select an evidence JSON file",
         type=["json"],
     )
 
-    if uploaded is not None:
+    if uploaded_file is not None:
+
         try:
-            evidence = json.load(uploaded)
+
+            evidence = json.load(uploaded_file)
+
             player_id = evidence["player_id"]
 
-            st.write("Player:", player_id)
+            st.info(
+                f"Evidence uploaded for player {player_id}"
+            )
 
             if not topic_id:
+
                 st.error(
-                    "Missing topic_id.txt. "
-                    "Cannot verify against Hedera."
+                    "Hedera topic ID is missing. "
+                    "Blockchain verification is unavailable."
                 )
+
             else:
-                with st.spinner("Fetching Hedera records..."):
+
+                with st.spinner(
+                    "Retrieving evidence records from Hedera..."
+                ):
+
                     records = get_chain_records(topic_id)
 
-                match = latest_record(player_id, records)
+                match = latest_record(
+                    player_id,
+                    records,
+                )
 
                 if match is None:
+
                     st.error(
-                        "No on-chain record found for this player."
+                        "No matching blockchain record was found "
+                        "for this player."
                     )
+
                 else:
+
                     record, timestamp, sequence = match
-                    valid, message = verify(evidence, record)
+
+                    valid, message = verify(
+                        evidence,
+                        record,
+                    )
+
+                    st.divider()
+
+                    st.subheader("Verification Results")
 
                     if valid:
-                        st.success("Evidence integrity verified!")
-                    else:
-                        st.error("Evidence verification FAILED!")
 
-                    st.write("Verification result:", message)
-                    st.write("Hedera sequence:", sequence)
-                    st.write("Consensus timestamp:", timestamp)
+                        st.success(
+                            "EVIDENCE VERIFIED"
+                        )
+
+                        st.write(
+                            "The uploaded evidence matches "
+                            "the signed record published on Hedera."
+                        )
+
+                    else:
+
+                        st.error(
+                            "EVIDENCE VERIFICATION FAILED"
+                        )
+
+                        st.write(
+                            "The uploaded evidence does not match "
+                            "the blockchain record or its signature "
+                            "is invalid."
+                        )
+
+                    st.write(
+                        "Player ID:",
+                        player_id,
+                    )
+
+                    st.write(
+                        "Hedera Sequence Number:",
+                        sequence,
+                    )
+
+                    st.write(
+                        "Consensus Timestamp:",
+                        timestamp,
+                    )
+
+                    st.write(
+                        "SHA-256 Evidence Hash:",
+                        record.get("sha256", "Unavailable"),
+                    )
 
                     st.link_button(
-                        "Inspect on HashScan",
+                        "Inspect Record on HashScan",
                         f"https://hashscan.io/testnet/topic/{topic_id}",
                     )
 
-        except Exception as exc:
-            st.error(f"Verification error: {exc}")
+                    st.caption(
+                        "Verification confirms evidence integrity "
+                        "against the retrieved blockchain record. "
+                        "It does not independently establish "
+                        "whether the player cheated."
+                    )
+
+        except Exception as error:
+
+            st.error(
+                f"Unable to verify evidence: {error}"
+            )
+
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
 
 st.divider()
+
 st.caption(
-    "GameGuard AI | Hackathon Demo | "
-    "Simulated gameplay data | Hedera Testnet"
+    "GameGuard AI | AI & Web3 Hackathon Demo | "
+    "Simulated Anti-Cheat Detection | Hedera Testnet"
 )
