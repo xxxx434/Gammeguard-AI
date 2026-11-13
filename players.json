@@ -1,0 +1,102 @@
+[
+  {
+    "player_id": "P1006",
+    "accuracy": 0.45,
+    "reaction_ms": 319,
+    "headshot_ratio": 0.15,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1010",
+    "accuracy": 0.96,
+    "reaction_ms": 66,
+    "headshot_ratio": 0.72,
+    "suspicion_score": 100,
+    "indicators": [
+      "précision anormalement élevée",
+      "temps de réaction quasi impossible",
+      "taux de tirs à la tête anormal"
+    ]
+  },
+  {
+    "player_id": "P1007",
+    "accuracy": 0.36,
+    "reaction_ms": 251,
+    "headshot_ratio": 0.25,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1003",
+    "accuracy": 0.44,
+    "reaction_ms": 319,
+    "headshot_ratio": 0.07,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1005",
+    "accuracy": 0.28,
+    "reaction_ms": 186,
+    "headshot_ratio": 0.19,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1011",
+    "accuracy": 0.86,
+    "reaction_ms": 82,
+    "headshot_ratio": 0.85,
+    "suspicion_score": 100,
+    "indicators": [
+      "précision anormalement élevée",
+      "temps de réaction quasi impossible",
+      "taux de tirs à la tête anormal"
+    ]
+  },
+  {
+    "player_id": "P1004",
+    "accuracy": 0.35,
+    "reaction_ms": 187,
+    "headshot_ratio": 0.07,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1002",
+    "accuracy": 0.29,
+    "reaction_ms": 215,
+    "headshot_ratio": 0.23,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1009",
+    "accuracy": 0.9,
+    "reaction_ms": 69,
+    "headshot_ratio": 0.75,
+    "suspicion_score": 100,
+    "indicators": [
+      "précision anormalement élevée",
+      "temps de réaction quasi impossible",
+      "taux de tirs à la tête anormal"
+    ]
+  },
+  {
+    "player_id": "P1008",
+    "accuracy": 0.2,
+    "reaction_ms": 220,
+    "headshot_ratio": 0.22,
+    "suspicion_score": 0,
+    "indicators": []
+  },
+  {
+    "player_id": "P1001",
+    "accuracy": 0.42,
+    "reaction_ms": 186,
+    "headshot_ratio": 0.24,
+    "suspicion_score": 0,
+    "indicators": []
+  }
+]
